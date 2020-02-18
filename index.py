@@ -2,9 +2,19 @@ import os
 import exifread
 import mysql.connector
 import decimal
+from tkinter import filedialog
+from tkinter import *
+
+root = Tk()
+root.withdraw()
+path = filedialog.askdirectory()
+table_name = 'photos'
 
 cnx = mysql.connector.connect(user='root', password='root', database='jpg_geo', host='localhost')
-path = '../'
+statement = "CREATE TABLE `" + table_name + "` (`datestamp` varchar(255) NOT NULL,`lat` varchar(255) NOT NULL,`lon` varchar(255) NOT NULL,`path` varchar(640) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+cur = cnx.cursor()
+cur.execute(statement)
+cnx.commit()
 
 def directory_walk(rootdir):
 	result = []
@@ -22,16 +32,19 @@ def divide_up(string):
 	return result
 
 def convert_geo_format(string):
-	final_string = ""
-	if len(string) > 0:
-		res = string.replace("]","")
-		res = res.replace("[","")
-		res = res.split(",")
-		first_bit = divide_up(res[0])
-		second_bit = divide_up(res[1])
-		third_bit = divide_up(res[2])
-		final_string = str(first_bit) + "-" + str(second_bit) + "-" + str(third_bit) + "N" # Needs work
-	return final_string
+	try:
+		final_string = ""
+		if len(string) > 0:
+			res = string.replace("]","")
+			res = res.replace("[","")
+			res = res.split(",")
+			first_bit = divide_up(res[0])
+			second_bit = divide_up(res[1])
+			third_bit = divide_up(res[2])
+			final_string = str(first_bit) + "-" + str(second_bit) + "-" + str(third_bit) + "N" # Needs work
+		return final_string
+	except:
+		return "0"
 
 def parse_geo(latitude, longitude):
 	new_latitude = 0
@@ -68,10 +81,11 @@ def collect_geos(all_jpgs):
 		if "'" in i:
 			i = ""
 		try:
-			statement = "INSERT INTO data (datestamp, lat, lon) VALUES ('" + str(date) + "', '" + str(decimal_geo[0]) + "', '" + str(decimal_geo[1]) +  "')"
+			statement = "INSERT INTO " + table_name + " (datestamp, lat, lon, path) VALUES ('" + str(date) + "', '" + str(decimal_geo[0]) + "', '" + str(decimal_geo[1]) + "', '" + str(i) + "')"
 			cur.execute(statement)
 			cnx.commit()
-		except mysql.connector.errors.DataError:
+			print(i)
+		except:
 			continue
 
 all_files = directory_walk(path)
